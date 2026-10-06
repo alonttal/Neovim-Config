@@ -1,0 +1,13 @@
+{
+  "run": {
+    "command": ["bash", "/home/alontalmor/dev/SideProjects/nvim-as-ide/run-catalina.sh"],
+    "env": {
+      "NVIM_SERVER_HOME": "/home/alontalmor/dev/Apache/apache-tomcat-11.0.7",
+      "NVIM_WAR_FILE": "target/app.war",
+      "NVIM_CONTEXT_PATH": "/app",
+      "NVIM_HTTP_PORT": "8082",
+      "NVIM_DEBUG_PORT": "5006"
+    }
+  },
+  "debug": {"request": "attach", "host": "127.0.0.1", "port": 5006}
+}

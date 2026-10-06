@@ -1,0 +1,13 @@
+# Generated editor and Python files.
+nvim.log
+__pycache__/
+*.py[cod]
+*.swp
+*.swo
+*~
+
+# Environment-private directories and prepared publishing artifacts.
+.aws/
+.codex/
+.agents/
+Neovim-Config.bundle
