@@ -1,6 +1,6 @@
 -- Native-first setup; optional debugging uses nvim-dap. See README.md.
 -- Lua comments begin with --. true enables an option; false disables it.
--- Space is the prefix for custom <leader> mappings. No mappings use it yet.
+-- Space is the prefix for custom <leader> mappings, such as Space em.
 vim.g.mapleader = ' '
 
 -- A short name for Neovim's option interface. See :help 'optionname',
@@ -325,10 +325,23 @@ if vim.fn.executable(jdtls) == 1 then
                 vim.lsp.completion.enable(true, client.id, bufnr,
                     { autotrigger = false })
             end
-            -- Our one additional mapping: gd goes to a definition, and
+            -- gd goes to a definition, and
             -- Ctrl-o returns. It only applies to buffers attached to JDT LS.
             vim.keymap.set('n', 'gd', vim.lsp.buf.definition,
                 { buffer = bufnr, desc = 'Java: go to definition' })
+            -- Select statements with V (whole lines) or v (characters), then
+            -- Space em extracts a method. Calling directly from Visual mode
+            -- lets native code_action capture the active selection's range.
+            -- JDT LS calls method extraction 'refactor.extract.function'.
+            -- Apply a single matching action directly; multiple choices use
+            -- the native picker. Unavailable extractions report no actions.
+            -- This changes the buffer without saving; u undoes the refactor.
+            vim.keymap.set('x', '<leader>em', function()
+                vim.lsp.buf.code_action({
+                    context = { only = { 'refactor.extract.function' } },
+                    apply = true,
+                })
+            end, { buffer = bufnr, desc = 'Java: extract selected code to method' })
         end,
     })
     vim.lsp.enable('jdtls')

@@ -86,7 +86,7 @@ Quickfix is a built-in list of locations. Both project search and build errors
 use it; a new search or build normally replaces the current list. LSP references
 can also appear there.
 
-Open a Java file in a Maven project first to configure `:find`. It searches
+Open a Maven directory, `pom.xml`, or a Java file to configure `:find`. It searches
 `src/main/java` and `src/test/java` recursively, plus the file's directory and
 the window's working directory. Use `:setlocal path?` to inspect that list.
 Custom source layouts and sibling Maven modules are not included automatically.
@@ -94,7 +94,7 @@ Custom source layouts and sibling Maven modules are not included automatically.
 ## 4 Java language tools
 
 These require JDT LS to be attached to the Java buffer. The first Maven import
-may take time. `gd` is our custom mapping and `:Format` is our convenience
+may take time. `gd` and `Space em` are our custom mappings; `:Format` is our convenience
 command; the other keys below are native.
 
 | Task | Keys | Notes |
@@ -105,6 +105,7 @@ command; the other keys below are native.
 | Find references | `grr` | Where the symbol is used |
 | Find implementations | `gri` | Useful for interfaces |
 | Code actions | `gra` | Available fixes and refactorings at the cursor |
+| Extract method | Select with `V` or `v`, then `Space em` | Complete statements; applies extraction without saving; rename with `grn` |
 | Format current file | `:Format` | Our command using native LSP; does not save; `u` undoes |
 | List document symbols | `gO` | Capital O; classes, methods, and fields |
 | Next / previous diagnostic | `]d` / `[d` | Errors, warnings, and other messages |
