@@ -134,6 +134,29 @@ if vim.fn.executable('rg') == 1 then
     opt.grepformat = '%f:%l:%c:%m'
 end
 
+-- :find is native file navigation and does not depend on a running LSP.
+-- Set its buffer-local search path even when starting with nvim . or pom.xml.
+-- Absolute paths keep searches working if netrw changes the window directory.
+local function configure_project_find(bufnr)
+    if vim.bo[bufnr].buftype ~= '' then return end
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    local start = vim.b[bufnr].netrw_curdir
+        or (name ~= '' and name or vim.fn.getcwd())
+    local root = vim.fs.root(start, { 'pom.xml' })
+    if not root then return end
+    local paths = { '.', '', root, root .. '/src/main/java/**',
+        root .. '/src/test/java/**' }
+    -- 'path' separates entries with commas/spaces; escape literal characters
+    -- so project directories such as "My Java Project" work too.
+    for index, path in ipairs(paths) do
+        paths[index] = vim.fn.escape(path, '\\ ,')
+    end
+    vim.bo[bufnr].path = table.concat(paths, ',')
+end
+vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWinEnter', 'FileType' }, {
+    callback = function(event) configure_project_find(event.buf) end,
+})
+
 -- Run :make from the project root. Prefer the project's own wrapper.
 -- Save with :write before :make: builds read files from disk.
 -- Builds block the editor until finished; inspect errors with :copen.
@@ -152,12 +175,7 @@ vim.api.nvim_create_autocmd('FileType', {
         -- :lcd changes this window's directory; escape spaces/special chars.
         vim.cmd.lcd(vim.fn.fnameescape(root))
         if vim.fn.filereadable(root .. '/pom.xml') == 1 then
-            -- Native :find searches the buffer-local 'path' directory list.
-            -- . means the file's directory; an empty entry means the window's
-            -- working directory (the project root set above). ** searches
-            -- subdirectories recursively, including Java package folders.
-            -- Limit recursion to Maven sources rather than build output.
-            vim.opt_local.path = { '.', '', 'src/main/java/**', 'src/test/java/**' }
+            -- Project navigation above sets 'path' before Java/LSP startup.
             -- Try :find UserService.java; Tab completes filenames.
             -- :sfind UserService.java opens it in a horizontal split.
             -- Duplicate names: :2find UserService.java selects match two,

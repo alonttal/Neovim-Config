@@ -106,8 +106,9 @@ marker and configures Maven or Gradle using Neovim's built-in Maven/javac parser
 Multi-module projects may need their root adjusted later. Builds run synchronously
 for now. Search requires `rg`; builds require the project's JDK and build tool.
 
-Opening a Maven Java file also configures native `:find` to search recursively
-inside `src/main/java` and `src/test/java`. `:sfind` opens a match in a split;
+Entering a Maven project through `nvim .`, `pom.xml`, or a source file configures
+native `:find` to search recursively inside `src/main/java` and `src/test/java`.
+File navigation works before the Java LSP starts. `:sfind` opens a match in a split;
 `:2find` selects a second match when filenames repeat. This uses the buffer's
 `path` option and adds no plugin. Custom source folders need explicit settings.
 
