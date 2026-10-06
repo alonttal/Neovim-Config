@@ -135,12 +135,17 @@ The server may download Maven dependencies. Each project gets its own cache.
 | Rename symbol | `grn` |
 | References | `grr` |
 | Code actions | `gra` |
-| Completion (Insert mode) | `Ctrl-x Ctrl-o` |
+| Completion (Insert mode) | Automatic while typing; `Ctrl-x Ctrl-o` requests it manually |
 | Select / accept / dismiss completion | `Ctrl-n` or `Ctrl-p` / `Ctrl-y` / `Ctrl-e` |
 | Next / previous diagnostic | `]d` / `[d` |
 | Diagnostic details | `Ctrl-w d` |
 
-Only `gd` is a custom mapping. The others are native Neovim commands/defaults.
+Completion uses Neovim's native LSP client. Suggestions start unselected;
+Enter inserts a newline, `Ctrl-n`/`Ctrl-p` select, `Ctrl-y` accepts, and `Ctrl-e`
+dismisses. Java identifiers and server trigger characters open the menu.
+
+`gd` and Visual-mode `Space em` are custom mappings. The others are native
+Neovim commands/defaults. `Space em` prompts for an extracted method's name.
 `:Format` is our convenience command for native LSP whole-file formatting.
 It changes the buffer without saving; inspect the result, undo with `u` if
 needed, and save with `:w`. Formatting does not run automatically on save.

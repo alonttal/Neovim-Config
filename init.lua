@@ -239,6 +239,85 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
 -- Java language intelligence: Neovim is the LSP client; JDT LS is a separate
 -- program that understands Java and imports Maven projects. No plugin needed.
 -- Install the server with bash ./install-jdtls.sh from this repository.
+local function extract_java_method(client, bufnr)
+    -- Capture the selection before the input prompt switches modes.
+    local first, last = vim.fn.getpos('v'), vim.fn.getpos('.')
+    if first[2] > last[2] or (first[2] == last[2] and first[3] > last[3]) then
+        first, last = last, first
+    end
+    local context = vim.lsp.util.make_given_range_params(
+        { first[2], first[3] - 1 }, { last[2], last[3] - 1 },
+        bufnr, client.offset_encoding)
+    if vim.fn.mode() == 'V' then
+        context.range.start.character = 0
+        local line = vim.api.nvim_buf_get_lines(bufnr, last[2] - 1, last[2], true)[1]
+        context.range['end'].character = vim.str_utfindex(line, client.offset_encoding)
+    end
+    context.context = { diagnostics = {} }
+    local tick = vim.api.nvim_buf_get_changedtick(bufnr)
+    local function unchanged(expected)
+        return vim.api.nvim_buf_is_valid(bufnr)
+            and vim.api.nvim_buf_get_changedtick(bufnr) == expected
+    end
+    local function report(message)
+        vim.notify(message, vim.log.levels.WARN)
+    end
+    vim.ui.input({ prompt = 'Extract method name: ' }, function(name)
+        if not name or name == '' then return end -- Cancel before making edits.
+        if not unchanged(tick) then report('Buffer changed; select the code again.'); return end
+        -- Let JDT LS validate identifiers and name collisions during rename.
+        client:request('workspace/executeCommand', {
+            command = 'java.getRefactorEdit',
+            arguments = { { command = 'extractMethod', context = context } },
+        }, function(err, result)
+            if not unchanged(tick) then report('Buffer changed; extraction cancelled.'); return end
+            if err or not result or not result.edit then
+                report((err and err.message) or (result and result.errorMessage)
+                    or 'Cannot extract this selection into a method.')
+                return
+            end
+            -- JDT LS supplies a UTF-16 offset into the resulting document,
+            -- identifying the new method name for a semantic rename.
+            local command = result.command
+            local target = command and command.arguments and command.arguments[1]
+            if not command or command.command ~= 'java.action.rename'
+                or not target or target.uri ~= context.textDocument.uri
+                or type(target.offset) ~= 'number' then
+                report('JDT LS supplied no rename location; use gra to extract, then grn.')
+                return
+            end
+            vim.lsp.util.apply_workspace_edit(result.edit, client.offset_encoding)
+            local offset, position = target.offset, nil
+            for index, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, -1, true)) do
+                local length = vim.str_utfindex(line, 'utf-16')
+                if offset <= length then
+                    local byte = vim.str_byteindex(line, 'utf-16', offset)
+                    position = { line = index - 1,
+                        character = vim.str_utfindex(line, client.offset_encoding, byte) }
+                    break
+                end
+                offset = offset - length - 1 -- LSP documents use LF separators.
+            end
+            if not position then
+                report('Extracted, but rename location is invalid; use grn to rename.'); return
+            end
+            local extracted_tick = vim.api.nvim_buf_get_changedtick(bufnr)
+            client:request('textDocument/rename', {
+                textDocument = context.textDocument, position = position, newName = name,
+            }, function(rename_err, edit)
+                if not unchanged(extracted_tick) then
+                    report('Buffer changed after extraction; use grn to rename.'); return
+                end
+                if rename_err or not edit then
+                    report('Extracted, but naming failed: '
+                        .. ((rename_err and rename_err.message) or 'use grn to rename.'))
+                    return
+                end
+                vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+            end, bufnr)
+        end, bufnr)
+    end)
+end
 local jdtls_dir = vim.fn.stdpath('data') .. '/jdtls'
 local jdtls = jdtls_dir .. '/bin/jdtls'
 -- Optional Java debugger bundles, installed with bash ./install-debug.sh.
@@ -318,29 +397,35 @@ if vim.fn.executable(jdtls) == 1 then
             if client:supports_method('textDocument/foldingRange') then
                 enable_java_folds(bufnr)
             end
-            -- Enable native LSP completion. Invoke it deliberately with
-            -- Ctrl-x Ctrl-o in Insert mode; Ctrl-n/p select, Ctrl-y accepts,
-            -- Ctrl-e dismisses. Suggestions do not pop up automatically.
+            -- Native automatic completion, including while typing names.
+            -- Servers normally trigger only on punctuation such as a dot.
+            -- Extend those triggers with identifier characters, preserving
+            -- server defaults. See :help lsp-autocompletion.
+            -- 'noselect' above keeps typing natural: Ctrl-n/p selects,
+            -- Ctrl-y accepts, Ctrl-e dismisses; Enter remains a newline.
+            -- Ctrl-x Ctrl-o still requests completion manually.
             if client:supports_method('textDocument/completion') then
+                local provider = client.server_capabilities.completionProvider
+                local triggers = provider.triggerCharacters or {}
+                for character in ('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$'):gmatch('.') do
+                    if not vim.tbl_contains(triggers, character) then
+                        triggers[#triggers + 1] = character
+                    end
+                end
+                provider.triggerCharacters = triggers
                 vim.lsp.completion.enable(true, client.id, bufnr,
-                    { autotrigger = false })
+                    { autotrigger = true })
             end
             -- gd goes to a definition, and
             -- Ctrl-o returns. It only applies to buffers attached to JDT LS.
             vim.keymap.set('n', 'gd', vim.lsp.buf.definition,
                 { buffer = bufnr, desc = 'Java: go to definition' })
             -- Select statements with V (whole lines) or v (characters), then
-            -- Space em extracts a method. Calling directly from Visual mode
-            -- lets native code_action capture the active selection's range.
-            -- JDT LS calls method extraction 'refactor.extract.function'.
-            -- Apply a single matching action directly; multiple choices use
-            -- the native picker. Unavailable extractions report no actions.
-            -- This changes the buffer without saving; u undoes the refactor.
+            -- Space em asks for a name, then extracts and semantically renames
+            -- the method through JDT LS. Cancelling the prompt leaves code alone.
+            -- Edits stay unsaved; extraction and rename can be undone with u.
             vim.keymap.set('x', '<leader>em', function()
-                vim.lsp.buf.code_action({
-                    context = { only = { 'refactor.extract.function' } },
-                    apply = true,
-                })
+                extract_java_method(client, bufnr)
             end, { buffer = bufnr, desc = 'Java: extract selected code to method' })
         end,
     })

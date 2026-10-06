@@ -105,7 +105,7 @@ command; the other keys below are native.
 | Find references | `grr` | Where the symbol is used |
 | Find implementations | `gri` | Useful for interfaces |
 | Code actions | `gra` | Available fixes and refactorings at the cursor |
-| Extract method | Select with `V` or `v`, then `Space em` | Complete statements; applies extraction without saving; rename with `grn` |
+| Extract method | Select with `V` or `v`, then `Space em` | Enter a method name; Escape cancels; edits stay unsaved |
 | Format current file | `:Format` | Our command using native LSP; does not save; `u` undoes |
 | List document symbols | `gO` | Capital O; classes, methods, and fields |
 | Next / previous diagnostic | `]d` / `[d` | Errors, warnings, and other messages |
@@ -114,7 +114,8 @@ command; the other keys below are native.
 | Close / open current fold | `zc` / `zo` | Changes the view only |
 | Close / open all folds | `zM` / `zR` | Capital M/R; zM may collapse the whole class |
 | Open current fold and its nested folds | `zO` | Capital O; useful after zM |
-| Request completion | `Ctrl-x Ctrl-o` | Insert mode |
+| Java completion | Appears while typing | Insert mode; nothing selected initially; Enter inserts a newline |
+| Request completion manually | `Ctrl-x Ctrl-o` | Insert mode |
 | Select next / previous suggestion | `Ctrl-n` / `Ctrl-p` | Insert mode, completion menu open |
 | Accept / dismiss suggestion | `Ctrl-y` / `Ctrl-e` | Insert mode, completion menu open |
 | Method signature help | `Ctrl-s` | Insert mode; some terminals intercept this |
