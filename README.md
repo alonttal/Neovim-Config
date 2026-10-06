@@ -44,6 +44,21 @@ XDG_CONFIG_HOME=/tmp/nvim-ide-config NVIM_APPNAME=fresh-ide nvim
 
 ## Replace your active configuration
 
+After cloning on another machine, close Neovim and run:
+
+```sh
+bash ./install.sh --debug
+```
+
+This installs the configuration, Java language support, Lombok, and Java
+debugging. Use `--java` without debugging, or no options for configuration only.
+Install Neovim 0.11+ first; Java support also needs Java 21+, Python 3.9+, curl,
+and tar. Install `rg`, `svn`, and Maven for their respective workflows.
+The installer works from any directory, respects `XDG_CONFIG_HOME` and
+`XDG_DATA_HOME`, and backs up the existing configuration directory. Existing
+Java/debug tools are reused; editor data and undo history are retained.
+Project settings and Tomcat/TomEE installations remain specific to each machine.
+
 For a complete reset on this machine, close all Neovim instances and run
 `bash ./reset-nvim.sh`. This deletes the entire Neovim config, data, cache, and
 state directories, including downloaded plugins, Mason tools, undo history,

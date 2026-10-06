@@ -6,6 +6,11 @@ vim.g.mapleader = ' '
 -- A short name for Neovim's option interface. See :help 'optionname',
 -- for example :help 'relativenumber', to learn more about any option below.
 local opt = vim.opt
+-- Preserve whether an existing file ends with a newline when saving.
+-- Reading a file sets 'endofline' from its contents; leave that option alone.
+-- Disabling 'fixendofline' prevents :w from adding a missing final newline.
+-- New buffers still use Neovim's normal final-newline default.
+opt.fixendofline = false
 -- Keep undo history after saving, closing, and reopening a file.
 -- u / Ctrl-r still undo / redo normally. :earlier 5m moves to the version
 -- from five minutes ago; :later 5m moves forward through that history.
